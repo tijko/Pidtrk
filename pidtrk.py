@@ -63,7 +63,6 @@ if __name__ == '__main__':
         if pid > 0:
             sys.exit(0)
     except OSError, e:
-        print >>sys.stderr, 'fork #1 failed: %d (%s)' % (e.errno, e.strerror)
         sys.exit(1)
 
     os.chdir('/')
@@ -75,7 +74,6 @@ if __name__ == '__main__':
         if pid > 0:
             sys.exit(0)
     except OSError, e:
-        print >>sys.stderr, 'fork #2 failed: %d (%s)' % (e.errno, e.strerror)
         sys.exit(1)
         
     pt = ProcessTrack()
