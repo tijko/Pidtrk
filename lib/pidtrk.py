@@ -11,7 +11,7 @@ class ProcessTrack(object):
         db_list = self.create_db_list()
         tagged = []
         try:
-            os.remove('/home/haumea/.data.txt')
+            os.remove(os.environ['HOME'] + '/.data.txt')
         except OSError:
             pass 
         while True:
@@ -26,7 +26,7 @@ class ProcessTrack(object):
                         name = [j for j in name.split(' ') if '(' in j]
                         if name[0][1:-1] not in tagged:
                             tagged.append(name[0][1:-1])
-                            with open('/home/haumea/.data.txt', 'a+') as f:
+                            with open(os.environ['HOME'] + '/.data.txt', 'a+') as f:
                                 f.write(name[0][1:-1] + ': ' + time.ctime() + '\n')
                             f.close()
                         if name[0][1:-1] not in db_list:
@@ -36,13 +36,13 @@ class ProcessTrack(object):
                         pass
 
     def create_db(self):
-        con = sqlite3.connect('/home/haumea/.pidtrk.db')
+        con = sqlite3.connect(os.environ['HOME'] + '/.pidtrk.db')
         with con:
             cur = con.cursor()
             cur.execute("CREATE TABLE IF NOT EXISTS Process(pidname TEXT, time TEXT)")
  
     def create_db_list(self):
-        con = sqlite3.connect('/home/haumea/.pidtrk.db')
+        con = sqlite3.connect(os.environ['HOME'] + '/.pidtrk.db')
         with con:
             cur = con.cursor()
             cur.execute("SELECT * FROM Process")
@@ -50,7 +50,7 @@ class ProcessTrack(object):
         return prclst
 
     def enter_process(self, process):
-        con = sqlite3.connect('/home/haumea/.pidtrk.db')
+        con = sqlite3.connect(os.environ['HOME'] + '/.pidtrk.db')
         with con:
             cur = con.cursor()
             cur.execute("INSERT INTO Process VALUES(?,?)", (process, time.ctime()))
