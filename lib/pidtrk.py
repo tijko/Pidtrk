@@ -22,13 +22,11 @@ class ProcessTrack(object):
                     try:
                         with open('/proc/%s/stat' % i, 'r+') as f:
                             name = f.readline()
-                        f.close()
                         name = [j for j in name.split(' ') if '(' in j]
                         if name[0][1:-1] not in tagged:
                             tagged.append(name[0][1:-1])
                             with open(os.environ['HOME'] + '/.data.txt', 'a+') as f:
                                 f.write(name[0][1:-1] + ': ' + time.ctime() + '\n')
-                            f.close()
                         if name[0][1:-1] not in db_list:
                             self.enter_process(name[0][1:-1])
                             db_list.append(name[0][1:-1])
