@@ -49,7 +49,7 @@ class ProcessTrack(object):
             cur.execute("SELECT * FROM Process")
             prclst = [i[0] for i in cur.fetchall()]
         con.commit()
-        con.clos()
+        con.close()
         return prclst
 
     def enter_process(self, process):
