@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import time
 import sqlite3
@@ -9,27 +11,26 @@ class ProcessTrack(object):
     def process_check(self):
         self.create_db()
         db_list = self.create_db_list()
-        tagged = []
+        tagged_ps = list() 
         try:
-            os.remove(os.environ['HOME'] + '/.data.txt')
+            os.remove(os.environ['HOME'] + '/.pidtrk.txt')
         except OSError:
             pass 
         while True:
             time.sleep(5)
-            ps = [int(i) for i in os.listdir('/proc') if i.isdigit()]
+            ps = [i for i in os.listdir('/proc') if i.isdigit()]
             for i in ps:
-                if os.path.isfile('/proc/%s/stat' % i):
+                if os.path.isfile('/proc/%s/comm' % i):
                     try:
-                        with open('/proc/%s/stat' % i, 'r+') as f:
-                            name = f.readline()
-                        name = [j for j in name.split(' ') if '(' in j]
-                        if name[0][1:-1] not in tagged:
-                            tagged.append(name[0][1:-1])
-                            with open(os.environ['HOME'] + '/.data.txt', 'a+') as f:
-                                f.write(name[0][1:-1] + ': ' + time.ctime() + '\n')
-                        if name[0][1:-1] not in db_list:
-                            self.enter_process(name[0][1:-1])
-                            db_list.append(name[0][1:-1])
+                        with open('/proc/%s/comm' % i) as f:
+                            ps_name = f.read().strip('\n')
+                        if ps_name not in tagged_ps:
+                            tagged_ps.append(ps_name)
+                            with open(os.environ['HOME'] + '/.pidtrk.txt', 'a+') as f:
+                                f.write(ps_name + ': ' + time.ctime() + '\n')
+                        if ps_name not in db_list:
+                            self.enter_process(ps_name)
+                            db_list.append(ps_name)
                     except AttributeError or IOError:
                         pass
 
@@ -38,6 +39,8 @@ class ProcessTrack(object):
         with con:
             cur = con.cursor()
             cur.execute("CREATE TABLE IF NOT EXISTS Process(pidname TEXT, time TEXT)")
+        con.commit()
+        con.close()
  
     def create_db_list(self):
         con = sqlite3.connect(os.environ['HOME'] + '/.pidtrk.db')
@@ -45,6 +48,8 @@ class ProcessTrack(object):
             cur = con.cursor()
             cur.execute("SELECT * FROM Process")
             prclst = [i[0] for i in cur.fetchall()]
+        con.commit()
+        con.clos()
         return prclst
 
     def enter_process(self, process):
@@ -52,4 +57,5 @@ class ProcessTrack(object):
         with con:
             cur = con.cursor()
             cur.execute("INSERT INTO Process VALUES(?,?)", (process, time.ctime()))
-
+        con.commit()
+        con.close()
