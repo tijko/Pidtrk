@@ -14,19 +14,19 @@ class ProcessTrack(object):
     def process_check(self):
         self.create_db
         db_list = self.create_db_list
-        tagged_ps = list()
+        processes = set()
         if os.path.isfile(self.PIDFILE) 
             os.remove(self.PIDFILE)
         while True:
             time.sleep(5)
-            ps = [i for i in os.listdir('/proc') if i.isdigit()]
-            for i in ps:
-                if os.path.isfile('/proc/%s/comm' % i):
+            new_proc = {i for i in os.listdir('/proc') 
+                        if i.isdigit() and i not in processes}
+            if new_proc:
+                for proc in new_proc:
+                    if os.path.isfile('/proc/%s/comm' % proc):
                     try:
-                        with open('/proc/%s/comm' % i) as f:
+                        with open('/proc/%s/comm' % proc) as f:
                             ps_name = f.read().strip('\n')
-                        if ps_name not in tagged_ps:
-                            tagged_ps.append(ps_name)
                             with open(self.PIDFILE, 'a+') as f:
                                 f.write(ps_name + ': ' + time.ctime() + '\n')
                         if ps_name not in db_list:
@@ -34,7 +34,7 @@ class ProcessTrack(object):
                             db_list.append(ps_name)
                     except AttributeError or IOError:
                         pass
-
+                processes.update(new_proc)
     @property
     def create_db(self):
         con = sqlite3.connect(self.PIDB)
