@@ -25,7 +25,7 @@ def main():
         sys.exit(1)
 
     ptrk = ProcessTrack()
-    ptrk.process_check()
+    ptrk.process_poll()
 
 if __name__ == '__main__':
     main()
