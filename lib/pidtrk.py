@@ -11,7 +11,7 @@ class ProcessTrack(object):
     PIDFILE = os.environ['HOME'] + '/.pidtrk.txt'
     PIDB = os.environ['HOME'] + '/.pidtrk.db'
 
-    def process_check(self):
+    def process_poll(self):
         self.create_db
         db_list = self.create_db_list
         processes = set()
