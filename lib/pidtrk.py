@@ -24,16 +24,16 @@ class ProcessTrack(object):
             if new_proc:
                 for proc in new_proc:
                     if os.path.isfile('/proc/%s/comm' % proc):
-                    try:
-                        with open('/proc/%s/comm' % proc) as f:
-                            ps_name = f.read().strip('\n')
-                            with open(self.PIDFILE, 'a+') as f:
-                                f.write(ps_name + ': ' + time.ctime() + '\n')
-                        if ps_name not in db_list:
-                            self.enter_process(ps_name)
-                            db_list.append(ps_name)
-                    except AttributeError or IOError:
-                        pass
+                        try:
+                            with open('/proc/%s/comm' % proc) as f:
+                                ps_name = f.read().strip('\n')
+                                with open(self.PIDFILE, 'a+') as f:
+                                    f.write(ps_name + ': ' + time.ctime() + '\n')
+                            if ps_name not in db_list:
+                                self.enter_process(ps_name)
+                                db_list.append(ps_name)
+                        except AttributeError or IOError:
+                            pass
                 processes.update(new_proc)
     @property
     def create_db(self):
