@@ -3,25 +3,35 @@
 
 import time
 import sqlite3
+import logging
 import os
 
 
 class ProcessTrack(object):
 
-    PIDFILE = os.environ['HOME'] + '/.pidtrk.txt'
     PIDB = os.environ['HOME'] + '/.pidtrk.db'
+    FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 
+    def __init__(self):
+        self.logger = logging.getLogger('Pidtrk')
+        self.logger.setLevel(logging.DEBUG)  
+        self.handler = logging.FileHandler('.pidtrk.log', 'w')
+        self.handler.setLevel(logging.DEBUG)
+        self.formatter = logging.Formatter(self.FORMAT)
+        self.handler.setFormatter(self.formatter) 
+        self.logger.addHandler(self.handler)
+        self.logger.info('Process Track')
+                                            
     def process_poll(self):
         self.create_db
         self.db_list = self.create_db_list
         pids = set()
-        if os.path.isfile(self.PIDFILE): 
-            os.remove(self.PIDFILE)
         while True:
             time.sleep(5)
             self.new_pids = {i for i in os.listdir('/proc') 
                              if i.isdigit() and i not in pids}
             if self.new_pids:
+                self.logger.debug('Process Spawned')
                 self.file_log_process
                 pids.update(self.new_pids)
 
@@ -31,9 +41,10 @@ class ProcessTrack(object):
             if os.path.isfile('/proc/%s/comm' % pid):
                 with open('/proc/%s/comm' % pid) as f:
                     self.process = f.read().strip('\n')
-                with open(self.PIDFILE, 'a+') as f:
-                    f.write(self.process + ': ' + time.ctime() + '\n')
+                self.logger.info('Process: %s', self.process)
                 self.db_log_process
+            else:
+                self.logger.warning('Process: %d', pid, 'dropped process')
 
     @property
     def db_log_process(self):
