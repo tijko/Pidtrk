@@ -30,11 +30,22 @@ class ProcessTrack(object):
             time.sleep(5)
             self.new_pids = {i for i in os.listdir('/proc') 
                              if i.isdigit() and i not in pids}
+            print self.new_pids
             if self.new_pids:
                 self.logger.debug('Process Spawned')
                 self.file_log_process
                 pids.update(self.new_pids)
-
+            for pid in pids:
+                try:
+                    with open('/proc/%s/io' % pid) as f:
+                        io = f.read()
+                    io = {k:v for k,v in [i.split(': ') for i in io.split('\n') if i]}
+                    if io['read_bytes'] / 65336 > 1000:
+                        self.logger.warning('Process %s', pid, 'High disk read')
+                    if io['write_bytes'] / 65336 > 1000:
+                        self.logger.warning('Process %s', pid, 'High disk write')
+                except OSError:
+                    pass
     @property
     def file_log_process(self):
         for pid in self.new_pids:
