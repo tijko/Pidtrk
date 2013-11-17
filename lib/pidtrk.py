@@ -30,7 +30,6 @@ class ProcessTrack(object):
             time.sleep(5)
             self.new_pids = {i for i in os.listdir('/proc') 
                              if i.isdigit() and i not in pids}
-            print self.new_pids
             if self.new_pids:
                 self.logger.debug('Process Spawned')
                 self.file_log_process
