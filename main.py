@@ -24,8 +24,7 @@ def main():
     except OSError, e:
         sys.exit(1)
 
-    ptrk = ProcessTrack()
-    ptrk.process_poll()
+    ProcessTrack()
 
 if __name__ == '__main__':
     main()
