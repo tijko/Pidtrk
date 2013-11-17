@@ -6,8 +6,10 @@ import sqlite3
 import logging
 import os
 
+from threading import Thread, Lock
 
-class ProcessTrack(object):
+
+class ProcessLogger(object):
 
     PIDB = os.environ['HOME'] + '/.pidtrk.db'
     FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -21,36 +23,23 @@ class ProcessTrack(object):
         self.handler.setFormatter(self.formatter) 
         self.logger.addHandler(self.handler)
         self.logger.info('Process Track')
-                                            
-    def process_poll(self):
         self.create_db
         self.db_list = self.create_db_list
-        pids = set()
-        while True:
-            time.sleep(5)
-            self.new_pids = {i for i in os.listdir('/proc') 
-                             if i.isdigit() and i not in pids}
-            if self.new_pids:
-                self.logger.debug('Process Spawned')
-                self.file_log_process
-                pids.update(self.new_pids)
-            for pid in pids:
-                try:
-                    with open('/proc/%s/io' % pid) as f:
-                        io = f.read()
-                    io = {k:v for k,v in [i.split(': ') for i in io.split('\n') if i]}
-                    if io['read_bytes'] / 65336 > 1000:
-                        self.logger.warning('Process %s', pid, 'High disk read')
-                    if io['write_bytes'] / 65336 > 1000:
-                        self.logger.warning('Process %s', pid, 'High disk write')
-                except OSError:
-                    pass
-    @property
-    def file_log_process(self):
-        for pid in self.new_pids:
+        self.pids = dict()
+        self.high_io = dict()
+        lock = Lock()
+        io = IOTrack(self, lock)
+        pt = ProcessTrack(self, lock)
+        io.start()
+        pt.start()
+                                            
+    def file_log_process(self, new_pids):
+        for pid in new_pids:
             if os.path.isfile('/proc/%s/comm' % pid):
                 with open('/proc/%s/comm' % pid) as f:
                     self.process = f.read().strip('\n')
+                self.pids[self.process] = pid
+                self.logger.debug('Process Spawned %s', pid)
                 self.logger.info('Process: %s', self.process)
                 self.db_log_process
             else:
@@ -59,7 +48,7 @@ class ProcessTrack(object):
     @property
     def db_log_process(self):
         if self.process not in self.db_list:
-            self.enter_process(self.process)
+            self.enter_process
             self.db_list.append(self.process)
 
     @property
@@ -87,3 +76,48 @@ class ProcessTrack(object):
             cur.execute("INSERT INTO Process VALUES(?,?)", 
                         (self.process, time.ctime()))
         return
+
+class IOTrack(Thread):
+
+    def __init__(self, proc, lock):
+        self.proc = proc
+        self.lock = lock
+        super(IOTrack, self).__init__()
+
+    def run(self):
+        while True:
+            time.sleep(5)
+            self.lock.acquire()            
+            for pid in self.proc.pids:
+                if pid not in self.proc.high_io:
+                    with open('/proc/%s/io' % self.proc.pids[pid]) as f:
+                        io = f.read()
+                    io = {k:int(v) for k,v in [i.split(': ') 
+                          for i in io.split('\n') if i]}
+                    if io['read_bytes'] / 65336 > 1000:
+                        self.proc.logger.warning('Process %s High disk read', 
+                                                  self.proc.pids[pid])
+                    if io['write_bytes'] / 65336 > 1000:
+                        self.proc.logger.warning('Process %s High disk write', 
+                                                  self.proc.pids[pid])
+                    self.proc.high_io[pid] = self.proc.pids[pid]
+            self.lock.release()
+
+class ProcessTrack(Thread):
+    
+    def __init__(self, proc, lock):
+        self.proc = proc
+        self.lock = lock
+        super(ProcessTrack, self).__init__()
+
+    def run(self): 
+        while True:
+            time.sleep(5)
+            self.lock.acquire()
+            self.new_pids = {i for i in os.listdir('/proc') 
+                             if i.isdigit() and i not in 
+                             self.proc.pids.values()}
+            if self.new_pids:
+                self.proc.file_log_process(self.new_pids)
+            self.lock.release()
+
