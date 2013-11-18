@@ -27,11 +27,14 @@ class ProcessLogger(object):
         self.db_list = self.create_db_list
         self.pids = dict()
         self.high_io = dict()
+        self.high_thread = dict()
         lock = Lock()
         io = IOTrack(self, lock)
         pt = ProcessTrack(self, lock)
+        tt = ThreadTrack(self, lock)
         io.start()
         pt.start()
+        tt.start()
                                             
     def file_log_process(self, new_pids):
         for pid in new_pids:
@@ -44,12 +47,14 @@ class ProcessLogger(object):
                 self.db_log_process
             else:
                 self.logger.warning('Process: %d', pid, 'dropped process')
+        return
 
     @property
     def db_log_process(self):
         if self.process not in self.db_list:
             self.enter_process
             self.db_list.append(self.process)
+        return
 
     @property
     def create_db(self):
@@ -86,7 +91,7 @@ class IOTrack(Thread):
 
     def run(self):
         while True:
-            time.sleep(5)
+            time.sleep(30)
             self.lock.acquire()            
             for pid in self.proc.pids:
                 if pid not in self.proc.high_io:
@@ -102,6 +107,7 @@ class IOTrack(Thread):
                                                   self.proc.pids[pid])
                     self.proc.high_io[pid] = self.proc.pids[pid]
             self.lock.release()
+        return
 
 class ProcessTrack(Thread):
     
@@ -120,4 +126,27 @@ class ProcessTrack(Thread):
             if self.new_pids:
                 self.proc.file_log_process(self.new_pids)
             self.lock.release()
+        return
 
+class ThreadTrack(Thread):
+    
+    def __init__(self, proc, lock):
+        self.proc = proc
+        self.lock = lock
+        super(ThreadTrack, self).__init__()
+
+    def run(self):
+        while True:
+            time.sleep(15)
+            self.lock.acquire()
+            for pid in self.proc.pids:
+                if pid not in self.proc.high_thread:
+                    with open('/proc/%s/status' % self.proc.pids[pid]) as f:
+                        status = f.read()
+                    status = {k:v for k,v in [i.split(':\t') for 
+                              i in status.split('\n') if i]}
+                    if status['Threads'] > 10:
+                        self.proc.logger.warning('Process %s High thread count', 
+                                              pid)
+                        self.proc.high_thread[pid] = self.proc.pids[pid]
+        return
